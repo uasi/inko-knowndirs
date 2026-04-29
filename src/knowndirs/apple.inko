@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: MPL-2.0
+
+import std.clone (Clone)
+import std.env (self as process_env)
+import std.fs.path (Path)
+
+# Locates Apple platform well-known directories.
+type pub Locator {
+  let @env: Option[Map[String, String]]
+  let @home: Path
+
+  # Creates a `Locator` with the process environment.
+  # Returns `None` if `HOME` is unset or empty.
+  fn pub static new -> Option[Self] {
+    match process_env.get('HOME') {
+      case Ok(home) if home.size > 0 -> {
+        Option.Some(Locator(home: Path.new(home), env: Option.None))
+      }
+      case _ -> Option.None
+    }
+  }
+
+  # Creates a `Locator` with the given environment variables.
+  # Returns `None` if `HOME` is unset or empty.
+  fn pub static with_env(env: Map[String, String]) -> Option[Self] {
+    match env.get('HOME') {
+      case Ok(home) if home.size > 0 -> {
+        Option.Some(Locator(home: Path.new(home), env: Option.Some(env)))
+      }
+      case _ -> Option.None
+    }
+  }
+
+  # Creates an `EntryLocator` scoped to the given entry name.
+  fn pub for_entry(name: String) -> EntryLocator {
+    EntryLocator(base: clone, name: name)
+  }
+
+  # Returns the directory for user-specific application support files.
+  #
+  # Defaults to `$HOME/Library/Application Support`.
+  fn pub application_support_directory -> Path {
+    @home.join('Library/Application Support')
+  }
+
+  # Returns the directory for user-specific cached data.
+  #
+  # Defaults to `$HOME/Library/Caches`.
+  fn pub caches_directory -> Path {
+    @home.join('Library/Caches')
+  }
+}
+
+impl Clone for Locator {
+  fn pub clone -> Self {
+    Locator(env: @env.clone, home: @home.clone)
+  }
+}
+
+# Locates standard directories for a named application entry.
+type pub EntryLocator {
+  let @base: Locator
+  let @name: String
+
+  # Returns the Application Support directory for this entry.
+  fn pub application_support_directory -> Path {
+    @base.application_support_directory.join(@name)
+  }
+
+  # Returns the Caches directory for this entry.
+  fn pub caches_directory -> Path {
+    @base.caches_directory.join(@name)
+  }
+}
+
+impl Clone for EntryLocator {
+  fn pub clone -> Self {
+    EntryLocator(base: @base.clone, name: @name.clone)
+  }
+}

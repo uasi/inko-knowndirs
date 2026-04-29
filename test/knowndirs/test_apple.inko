@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: MPL-2.0
+
+import knowndirs._test_helpers (env)
+import knowndirs.apple (Locator)
+import std.env (self as process_env)
+import std.fs.path (Path)
+import std.test (Tests)
+
+fn locator(pairs: Array[(String, String)]) -> Locator {
+  Locator.with_env(env(pairs)).get
+}
+
+fn pub tests(t: mut Tests) {
+  t.test('Locator.new returns Some when HOME is non-empty', fn (t) {
+    let _ = process_env.get('HOME').or_panic_with('HOME must be set')
+
+    t.true(Locator.new.some?)
+  })
+
+  t.test(
+    'Locator.with_env returns None when HOME is either unset or empty',
+    fn (t) {
+      t.true(Locator.with_env(env([])).none?)
+      t.true(Locator.with_env(env([('HOME', '')])).none?)
+    },
+  )
+
+  t.test(
+    'Locator.application_support_directory returns $HOME/Library/Application Support',
+    fn (t) {
+      let l = locator([('HOME', '/Users/user')])
+
+      t.equal(
+        l.application_support_directory,
+        Path.new('/Users/user/Library/Application Support'),
+      )
+    },
+  )
+
+  t.test('Locator.caches_directory returns $HOME/Library/Caches', fn (t) {
+    let l = locator([('HOME', '/Users/user')])
+
+    t.equal(l.caches_directory, Path.new('/Users/user/Library/Caches'))
+  })
+
+  t.test(
+    'EntryLocator.application_support_directory returns the entry subdirectory',
+    fn (t) {
+      let l = locator([('HOME', '/Users/user')])
+
+      t.equal(
+        l.for_entry('MyApp').application_support_directory,
+        Path.new('/Users/user/Library/Application Support/MyApp'),
+      )
+    },
+  )
+
+  t.test(
+    'EntryLocator.caches_directory returns the entry subdirectory',
+    fn (t) {
+      let l = locator([('HOME', '/Users/user')])
+
+      t.equal(
+        l.for_entry('MyApp').caches_directory,
+        Path.new('/Users/user/Library/Caches/MyApp'),
+      )
+    },
+  )
+}
