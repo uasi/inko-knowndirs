@@ -1,0 +1,159 @@
+# SPDX-License-Identifier: MPL-2.0
+
+import std.clone (Clone)
+import std.env (self as process_env)
+import std.fs.path (Path)
+
+# Locates XDG Base Directory Specification paths.
+type pub Locator {
+  let @env: Option[Map[String, String]]
+  let @home: Path
+
+  # Creates a `Locator` with the process environment.
+  # Returns `None` if `HOME` is unset or empty.
+  fn pub static new -> Option[Self] {
+    match process_env.get('HOME') {
+      case Ok(home) if home.size > 0 -> {
+        Option.Some(Locator(home: Path.new(home), env: Option.None))
+      }
+      case _ -> Option.None
+    }
+  }
+
+  # Creates a `Locator` with the given environment variables.
+  # Returns `None` if `HOME` is unset or empty.
+  fn pub static with_env(env: Map[String, String]) -> Option[Self] {
+    match env.get('HOME') {
+      case Ok(home) if home.size > 0 -> {
+        Option.Some(Locator(home: Path.new(home), env: Option.Some(env)))
+      }
+      case _ -> Option.None
+    }
+  }
+
+  # Creates an `EntryLocator` scoped to the given entry name.
+  fn pub for_entry(name: String) -> EntryLocator {
+    EntryLocator(base: clone, name: name)
+  }
+
+  # Returns the base directory for user-specific data files.
+  #
+  # Respects `XDG_DATA_HOME`. Defaults to `$HOME/.local/share`.
+  fn pub data_home -> Path {
+    xdg_path('XDG_DATA_HOME', '.local/share')
+  }
+
+  # Returns the base directory for user-specific configuration files.
+  #
+  # Respects `XDG_CONFIG_HOME`. Defaults to `$HOME/.config`.
+  fn pub config_home -> Path {
+    xdg_path('XDG_CONFIG_HOME', '.config')
+  }
+
+  # Returns the base directory for user-specific state data.
+  #
+  # Respects `XDG_STATE_HOME`. Defaults to `$HOME/.local/state`.
+  fn pub state_home -> Path {
+    xdg_path('XDG_STATE_HOME', '.local/state')
+  }
+
+  # Returns the base directory for user-specific non-essential cached data.
+  #
+  # Respects `XDG_CACHE_HOME`. Defaults to `$HOME/.cache`.
+  fn pub cache_home -> Path {
+    xdg_path('XDG_CACHE_HOME', '.cache')
+  }
+
+  # Returns the base directory for user-specific runtime files and sockets.
+  #
+  # Respects `XDG_RUNTIME_DIR`. Returns `None` when the variable is unset, as
+  # the XDG spec requires this directory to be set by the OS session manager
+  # with no suitable fallback.
+  fn pub runtime_directory -> Option[Path] {
+    match get('XDG_RUNTIME_DIR') {
+      case Some(v) if v.size > 0 -> Option.Some(Path.new(v))
+      case _ -> Option.None
+    }
+  }
+
+  # Returns the search path for data files, in preference order.
+  #
+  # Respects `XDG_DATA_DIRS`. Defaults to `[/usr/local/share, /usr/share]`.
+  fn pub data_directories -> Array[Path] {
+    match get('XDG_DATA_DIRS') {
+      case Some(v) if v.size > 0 -> split_paths(v)
+      case _ -> [Path.new('/usr/local/share'), Path.new('/usr/share')]
+    }
+  }
+
+  # Returns the search path for configuration files, in preference order.
+  #
+  # Respects `XDG_CONFIG_DIRS`. Defaults to `[/etc/xdg]`.
+  fn pub config_directories -> Array[Path] {
+    match get('XDG_CONFIG_DIRS') {
+      case Some(v) if v.size > 0 -> split_paths(v)
+      case _ -> [Path.new('/etc/xdg')]
+    }
+  }
+
+  fn xdg_path(env_name: String, relative_default: String) -> Path {
+    match get(env_name) {
+      case Some(v) if v.size > 0 -> Path.new(v)
+      case _ -> @home.join(relative_default)
+    }
+  }
+
+  fn split_paths(value: String) -> Array[Path] {
+    value.split(':').map(fn (s) { Path.new(s.to_string) }).to_array
+  }
+
+  fn get(name: String) -> Option[String] {
+    match @env {
+      case Some(env) -> env.get(name).ok
+      case _ -> process_env.get(name).ok
+    }
+  }
+}
+
+impl Clone for Locator {
+  fn pub clone -> Self {
+    Locator(env: @env.clone, home: @home.clone)
+  }
+}
+
+# Locates standard directories for a named application entry.
+type pub EntryLocator {
+  let @base: Locator
+  let @name: String
+
+  # Returns the data directory for this entry.
+  fn pub data_directory -> Path {
+    @base.data_home.join(@name)
+  }
+
+  # Returns the configuration directory for this entry.
+  fn pub config_directory -> Path {
+    @base.config_home.join(@name)
+  }
+
+  # Returns the state directory for this entry.
+  fn pub state_directory -> Path {
+    @base.state_home.join(@name)
+  }
+
+  # Returns the cache directory for this entry.
+  fn pub cache_directory -> Path {
+    @base.cache_home.join(@name)
+  }
+
+  # Returns the runtime directory for this entry.
+  fn pub runtime_directory -> Option[Path] {
+    @base.runtime_directory.map(fn (dir) { dir.join(@name) })
+  }
+}
+
+impl Clone for EntryLocator {
+  fn pub clone -> Self {
+    EntryLocator(base: @base.clone, name: @name.clone)
+  }
+}

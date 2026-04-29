@@ -1,0 +1,228 @@
+# SPDX-License-Identifier: MPL-2.0
+
+import knowndirs._test_helpers (env)
+import knowndirs.xdg (Locator)
+import std.env (self as process_env)
+import std.fs.path (Path)
+import std.test (Tests)
+
+fn locator(pairs: Array[(String, String)]) -> Locator {
+  Locator.with_env(env(pairs)).get
+}
+
+fn pub tests(t: mut Tests) {
+  t.test('Locator.new returns Some when HOME is non-empty', fn (t) {
+    let _ = process_env.get('HOME').or_panic_with('HOME must be set')
+
+    t.true(Locator.new.some?)
+  })
+
+  t.test(
+    'Locator.with_env returns None when HOME is either unset or empty',
+    fn (t) {
+      t.true(Locator.with_env(env([])).none?)
+      t.true(Locator.with_env(env([('HOME', '')])).none?)
+    },
+  )
+
+  t.test('Locator.data_home respects XDG_DATA_HOME', fn (t) {
+    let l = locator([('HOME', '/home/user'), ('XDG_DATA_HOME', '/custom/data')])
+
+    t.equal(l.data_home, Path.new('/custom/data'))
+  })
+
+  t.test('Locator.data_home defaults to $HOME/.local/share', fn (t) {
+    let l = locator([('HOME', '/home/user')])
+
+    t.equal(l.data_home, Path.new('/home/user/.local/share'))
+
+    let l = locator([('HOME', '/home/user'), ('XDG_DATA_HOME', '')])
+
+    t.equal(l.data_home, Path.new('/home/user/.local/share'))
+  })
+
+  t.test('Locator.config_home respects XDG_CONFIG_HOME', fn (t) {
+    let l = locator(
+      [('HOME', '/home/user'), ('XDG_CONFIG_HOME', '/custom/config')],
+    )
+
+    t.equal(l.config_home, Path.new('/custom/config'))
+  })
+
+  t.test('Locator.config_home defaults to $HOME/.config', fn (t) {
+    let l = locator([('HOME', '/home/user')])
+
+    t.equal(l.config_home, Path.new('/home/user/.config'))
+
+    let l = locator([('HOME', '/home/user'), ('XDG_CONFIG_HOME', '')])
+
+    t.equal(l.config_home, Path.new('/home/user/.config'))
+  })
+
+  t.test('Locator.state_home respects XDG_STATE_HOME', fn (t) {
+    let l = locator(
+      [('HOME', '/home/user'), ('XDG_STATE_HOME', '/custom/state')],
+    )
+
+    t.equal(l.state_home, Path.new('/custom/state'))
+  })
+
+  t.test('Locator.state_home defaults to $HOME/.local/state', fn (t) {
+    let l = locator([('HOME', '/home/user')])
+
+    t.equal(l.state_home, Path.new('/home/user/.local/state'))
+
+    let l = locator([('HOME', '/home/user'), ('XDG_STATE_HOME', '')])
+
+    t.equal(l.state_home, Path.new('/home/user/.local/state'))
+  })
+
+  t.test('Locator.cache_home respects XDG_CACHE_HOME', fn (t) {
+    let l = locator(
+      [('HOME', '/home/user'), ('XDG_CACHE_HOME', '/custom/cache')],
+    )
+
+    t.equal(l.cache_home, Path.new('/custom/cache'))
+  })
+
+  t.test('Locator.cache_home defaults to $HOME/.cache', fn (t) {
+    let l = locator([('HOME', '/home/user')])
+
+    t.equal(l.cache_home, Path.new('/home/user/.cache'))
+
+    let l = locator([('HOME', '/home/user'), ('XDG_CACHE_HOME', '')])
+
+    t.equal(l.cache_home, Path.new('/home/user/.cache'))
+  })
+
+  t.test('Locator.runtime_directory respects XDG_RUNTIME_DIR', fn (t) {
+    let l = locator(
+      [('HOME', '/home/user'), ('XDG_RUNTIME_DIR', '/run/user/1000')],
+    )
+
+    t.equal(l.runtime_directory, Option.Some(Path.new('/run/user/1000')))
+  })
+
+  t.test(
+    'Locator.runtime_directory returns None when XDG_RUNTIME_DIR is either unset or empty',
+    fn (t) {
+      let l = locator([('HOME', '/home/user')])
+
+      t.equal(l.runtime_directory, Option.None)
+
+      let l = locator([('HOME', '/home/user'), ('XDG_RUNTIME_DIR', '')])
+
+      t.equal(l.runtime_directory, Option.None)
+    },
+  )
+
+  t.test('Locator.data_directories respects XDG_DATA_DIRS', fn (t) {
+    let l = locator(
+      [
+        ('HOME', '/home/user'),
+        ('XDG_DATA_DIRS', '/opt/share:/usr/local/share'),
+      ],
+    )
+
+    t.equal(
+      l.data_directories,
+      [Path.new('/opt/share'), Path.new('/usr/local/share')],
+    )
+  })
+
+  t.test(
+    'Locator.data_directories defaults to /usr/local/share and /usr/share',
+    fn (t) {
+      let l = locator([('HOME', '/home/user')])
+
+      t.equal(
+        l.data_directories,
+        [Path.new('/usr/local/share'), Path.new('/usr/share')],
+      )
+
+      let l = locator([('HOME', '/home/user'), ('XDG_DATA_DIRS', '')])
+
+      t.equal(
+        l.data_directories,
+        [Path.new('/usr/local/share'), Path.new('/usr/share')],
+      )
+    },
+  )
+
+  t.test('Locator.config_directories respects XDG_CONFIG_DIRS', fn (t) {
+    let l = locator(
+      [('HOME', '/home/user'), ('XDG_CONFIG_DIRS', '/opt/xdg:/etc/xdg')],
+    )
+
+    t.equal(l.config_directories, [Path.new('/opt/xdg'), Path.new('/etc/xdg')])
+  })
+
+  t.test('Locator.config_directories defaults to /etc/xdg', fn (t) {
+    let l = locator([('HOME', '/home/user')])
+
+    t.equal(l.config_directories, [Path.new('/etc/xdg')])
+
+    let l = locator([('HOME', '/home/user'), ('XDG_CONFIG_DIRS', '')])
+
+    t.equal(l.config_directories, [Path.new('/etc/xdg')])
+  })
+
+  t.test('EntryLocator.data_directory returns the entry subdirectory', fn (t) {
+    let l = locator([('HOME', '/home/user')])
+
+    t.equal(
+      l.for_entry('myapp').data_directory,
+      Path.new('/home/user/.local/share/myapp'),
+    )
+  })
+
+  t.test(
+    'EntryLocator.config_directory returns the entry subdirectory',
+    fn (t) {
+      let l = locator([('HOME', '/home/user')])
+
+      t.equal(
+        l.for_entry('myapp').config_directory,
+        Path.new('/home/user/.config/myapp'),
+      )
+    },
+  )
+
+  t.test(
+    'EntryLocator.state_directory returns the entry subdirectory',
+    fn (t) {
+      let l = locator([('HOME', '/home/user')])
+
+      t.equal(
+        l.for_entry('myapp').state_directory,
+        Path.new('/home/user/.local/state/myapp'),
+      )
+    },
+  )
+
+  t.test(
+    'EntryLocator.cache_directory returns the entry subdirectory',
+    fn (t) {
+      let l = locator([('HOME', '/home/user')])
+
+      t.equal(
+        l.for_entry('myapp').cache_directory,
+        Path.new('/home/user/.cache/myapp'),
+      )
+    },
+  )
+
+  t.test(
+    'EntryLocator.runtime_directory returns the entry subdirectory',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user'), ('XDG_RUNTIME_DIR', '/run/user/1000')],
+      )
+
+      t.equal(
+        l.for_entry('myapp').runtime_directory,
+        Option.Some(Path.new('/run/user/1000/myapp')),
+      )
+    },
+  )
+}

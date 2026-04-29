@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: MPL-2.0
+
+fn env(pairs: Array[(String, String)]) -> Map[String, String] {
+  let map = Map.new
+
+  for pair in pairs { map.set(pair.0, pair.1) }
+
+  map
+}
