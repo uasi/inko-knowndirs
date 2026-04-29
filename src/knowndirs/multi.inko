@@ -1,0 +1,170 @@
+# SPDX-License-Identifier: MPL-2.0
+
+import knowndirs.apple (
+  EntryLocator as AppleEntryLocator, Locator as AppleLocator,
+)
+import knowndirs.xdg (EntryLocator as XdgEntryLocator, Locator as XdgLocator)
+import std.env (OS)
+import std.fs.path (Path)
+
+# Locates standard directories using a platform-appropriate strategy.
+type pub Locator {
+  let @apple: AppleLocator
+  let @xdg: XdgLocator
+  let pub mut @platform: Platform
+  let pub mut @strategy: Strategy
+
+  # Creates a `Locator` with the process environment, `Platform.compiled_for`, and `Strategy.PreferXdg`.
+  # Returns `None` if `HOME` is unset or empty.
+  fn pub static new -> Option[Self] {
+    match (AppleLocator.new, XdgLocator.new) {
+      case (Some(apple), Some(xdg)) -> {
+        Option.Some(
+          Locator(
+            apple: apple,
+            xdg: xdg,
+            platform: Platform.compiled_for,
+            strategy: Strategy.PreferXdg,
+          ),
+        )
+      }
+      case _ -> Option.None
+    }
+  }
+
+  # Creates a `Locator` with the given environment variables, `Platform.compiled_for`, and `Strategy.PreferXdg`.
+  # Returns `None` if `HOME` is unset or empty.
+  fn pub static with_env(env: Map[String, String]) -> Option[Self] {
+    match (AppleLocator.with_env(env.clone), XdgLocator.with_env(env)) {
+      case (Some(apple), Some(xdg)) -> {
+        Option.Some(
+          Locator(
+            apple: apple,
+            xdg: xdg,
+            platform: Platform.compiled_for,
+            strategy: Strategy.PreferXdg,
+          ),
+        )
+      }
+      case _ -> Option.None
+    }
+  }
+
+  # Creates an `EntryLocator` scoped to the given entry spec.
+  fn pub for_entry(spec: EntrySpec) -> EntryLocator {
+    EntryLocator(
+      apple: @apple.for_entry(spec.apple_name),
+      xdg: @xdg.for_entry(spec.xdg_name),
+      platform: @platform,
+      strategy: @strategy,
+    )
+  }
+
+  # Returns the base directory for user-specific data files.
+  fn pub data_home -> Path {
+    match (@platform, @strategy) {
+      case (Apple, PreferNative) -> @apple.application_support_directory
+      case (Apple, PreferXdg) -> @xdg.data_home
+      case (Xdg, _) -> @xdg.data_home
+    }
+  }
+
+  # Returns the base directory for user-specific configuration files.
+  fn pub config_home -> Path {
+    match (@platform, @strategy) {
+      case (Apple, PreferNative) -> @apple.application_support_directory
+      case (Apple, PreferXdg) -> @xdg.config_home
+      case (Xdg, _) -> @xdg.config_home
+    }
+  }
+
+  # Returns the base directory for user-specific state data.
+  fn pub state_home -> Path {
+    match (@platform, @strategy) {
+      case (Apple, PreferNative) -> @apple.application_support_directory
+      case (Apple, PreferXdg) -> @xdg.state_home
+      case (Xdg, _) -> @xdg.state_home
+    }
+  }
+
+  # Returns the base directory for user-specific non-essential cached data.
+  fn pub cache_home -> Path {
+    match (@platform, @strategy) {
+      case (Apple, PreferNative) -> @apple.caches_directory
+      case (Apple, PreferXdg) -> @xdg.cache_home
+      case (Xdg, _) -> @xdg.cache_home
+    }
+  }
+}
+
+# Locates standard directories for a named application entry.
+type pub EntryLocator {
+  let @apple: AppleEntryLocator
+  let @xdg: XdgEntryLocator
+  let @platform: Platform
+  let pub mut @strategy: Strategy
+
+  # Returns the data directory for this entry.
+  fn pub data_directory -> Path {
+    match (@platform, @strategy) {
+      case (Apple, PreferNative) -> @apple.application_support_directory
+      case (Apple, PreferXdg) -> @xdg.data_directory
+      case (Xdg, _) -> @xdg.data_directory
+    }
+  }
+
+  # Returns the configuration directory for this entry.
+  fn pub config_directory -> Path {
+    match (@platform, @strategy) {
+      case (Apple, PreferNative) -> @apple.application_support_directory
+      case (Apple, PreferXdg) -> @xdg.config_directory
+      case (Xdg, _) -> @xdg.config_directory
+    }
+  }
+
+  # Returns the state directory for this entry.
+  fn pub state_directory -> Path {
+    match (@platform, @strategy) {
+      case (Apple, PreferNative) -> @apple.application_support_directory
+      case (Apple, PreferXdg) -> @xdg.state_directory
+      case (Xdg, _) -> @xdg.state_directory
+    }
+  }
+
+  # Returns the cache directory for this entry.
+  fn pub cache_directory -> Path {
+    match (@platform, @strategy) {
+      case (Apple, PreferNative) -> @apple.caches_directory
+      case (Apple, PreferXdg) -> @xdg.cache_directory
+      case (Xdg, _) -> @xdg.cache_directory
+    }
+  }
+}
+
+# The platform-specific names for an application entry.
+type pub EntrySpec {
+  let pub @apple_name: String
+  let pub @xdg_name: String
+}
+
+# The platform to use when locating directories.
+type pub copy enum Platform {
+  case Apple
+  case Xdg
+
+  fn pub static compiled_for -> Self {
+    match OS {
+      case 'mac' -> Apple
+      case _ -> Xdg
+    }
+  }
+}
+
+# Determines which platform convention to prefer when locating directories.
+type pub copy enum Strategy {
+  # Prefer the platform's native convention (Apple on macOS, XDG elsewhere).
+  case PreferNative
+
+  # Prefer XDG to the platform's native convention.
+  case PreferXdg
+}

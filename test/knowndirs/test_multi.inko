@@ -1,0 +1,470 @@
+# SPDX-License-Identifier: MPL-2.0
+
+import knowndirs._test_helpers (env)
+import knowndirs.multi (EntryLocator, EntrySpec, Locator, Platform, Strategy)
+import std.env (self as process_env)
+import std.fs.path (Path)
+import std.test (Tests)
+
+fn locator(
+  pairs: Array[(String, String)],
+  platform: Platform,
+  strategy: Strategy,
+) -> Locator {
+  let mut l = Locator.with_env(env(pairs)).get
+
+  l.platform = platform
+  l.strategy = strategy
+  l
+}
+
+fn entry(
+  pairs: Array[(String, String)],
+  platform: Platform,
+  strategy: Strategy,
+) -> EntryLocator {
+  locator(pairs, platform, strategy).for_entry(
+    EntrySpec(apple_name: 'MyApp', xdg_name: 'myapp'),
+  )
+}
+
+fn pub tests(t: mut Tests) {
+  t.test('Locator.new returns Some when HOME is non-empty', fn (t) {
+    let _ = process_env.get('HOME').or_panic_with('HOME must be set')
+
+    t.true(Locator.new.some?)
+  })
+
+  t.test(
+    'Locator.with_env returns None when HOME is either unset or empty',
+    fn (t) {
+      t.true(Locator.with_env(env([])).none?)
+      t.true(Locator.with_env(env([('HOME', '')])).none?)
+    },
+  )
+
+  t.test(
+    'Locator.data_home returns $HOME/Library/Application Support for (Apple, PreferNative)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferNative,
+      )
+
+      t.equal(l.data_home, Path.new('/home/user/Library/Application Support'))
+    },
+  )
+
+  t.test(
+    'Locator.data_home returns $HOME/.local/share for (Apple, PreferXdg)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(l.data_home, Path.new('/home/user/.local/share'))
+    },
+  )
+
+  t.test(
+    'Locator.data_home returns $HOME/.local/share for (Xdg, PreferNative)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferNative,
+      )
+
+      t.equal(l.data_home, Path.new('/home/user/.local/share'))
+    },
+  )
+
+  t.test(
+    'Locator.data_home returns $HOME/.local/share for (Xdg, PreferXdg)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(l.data_home, Path.new('/home/user/.local/share'))
+    },
+  )
+
+  t.test(
+    'Locator.config_home returns $HOME/Library/Application Support for (Apple, PreferNative)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferNative,
+      )
+
+      t.equal(l.config_home, Path.new('/home/user/Library/Application Support'))
+    },
+  )
+
+  t.test(
+    'Locator.config_home returns $HOME/.config for (Apple, PreferXdg)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(l.config_home, Path.new('/home/user/.config'))
+    },
+  )
+
+  t.test(
+    'Locator.config_home returns $HOME/.config for (Xdg, PreferNative)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferNative,
+      )
+
+      t.equal(l.config_home, Path.new('/home/user/.config'))
+    },
+  )
+
+  t.test(
+    'Locator.config_home returns $HOME/.config for (Xdg, PreferXdg)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(l.config_home, Path.new('/home/user/.config'))
+    },
+  )
+
+  t.test(
+    'Locator.state_home returns $HOME/Library/Application Support for (Apple, PreferNative)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferNative,
+      )
+
+      t.equal(l.state_home, Path.new('/home/user/Library/Application Support'))
+    },
+  )
+
+  t.test(
+    'Locator.state_home returns $HOME/.local/state for (Apple, PreferXdg)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(l.state_home, Path.new('/home/user/.local/state'))
+    },
+  )
+
+  t.test(
+    'Locator.state_home returns $HOME/.local/state for (Xdg, PreferNative)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferNative,
+      )
+
+      t.equal(l.state_home, Path.new('/home/user/.local/state'))
+    },
+  )
+
+  t.test(
+    'Locator.state_home returns $HOME/.local/state for (Xdg, PreferXdg)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(l.state_home, Path.new('/home/user/.local/state'))
+    },
+  )
+
+  t.test(
+    'Locator.cache_home returns $HOME/Library/Caches for (Apple, PreferNative)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferNative,
+      )
+
+      t.equal(l.cache_home, Path.new('/home/user/Library/Caches'))
+    },
+  )
+
+  t.test(
+    'Locator.cache_home returns $HOME/.cache for (Apple, PreferXdg)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(l.cache_home, Path.new('/home/user/.cache'))
+    },
+  )
+
+  t.test(
+    'Locator.cache_home returns $HOME/.cache for (Xdg, PreferNative)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferNative,
+      )
+
+      t.equal(l.cache_home, Path.new('/home/user/.cache'))
+    },
+  )
+
+  t.test(
+    'Locator.cache_home returns $HOME/.cache for (Xdg, PreferXdg)',
+    fn (t) {
+      let l = locator(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(l.cache_home, Path.new('/home/user/.cache'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.data_directory returns the Apple Application Support entry subdirectory for (Apple, PreferNative)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferNative,
+      )
+
+      t.equal(
+        app.data_directory,
+        Path.new('/home/user/Library/Application Support/MyApp'),
+      )
+    },
+  )
+
+  t.test(
+    'EntryLocator.data_directory returns the XDG data entry subdirectory for (Apple, PreferXdg)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(app.data_directory, Path.new('/home/user/.local/share/myapp'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.data_directory returns the XDG data entry subdirectory for (Xdg, PreferNative)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferNative,
+      )
+
+      t.equal(app.data_directory, Path.new('/home/user/.local/share/myapp'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.data_directory returns the XDG data entry subdirectory for (Xdg, PreferXdg)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(app.data_directory, Path.new('/home/user/.local/share/myapp'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.config_directory returns the Apple Application Support entry subdirectory for (Apple, PreferNative)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferNative,
+      )
+
+      t.equal(
+        app.config_directory,
+        Path.new('/home/user/Library/Application Support/MyApp'),
+      )
+    },
+  )
+
+  t.test(
+    'EntryLocator.config_directory returns the XDG config entry subdirectory for (Apple, PreferXdg)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(app.config_directory, Path.new('/home/user/.config/myapp'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.config_directory returns the XDG config entry subdirectory for (Xdg, PreferNative)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferNative,
+      )
+
+      t.equal(app.config_directory, Path.new('/home/user/.config/myapp'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.config_directory returns the XDG config entry subdirectory for (Xdg, PreferXdg)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(app.config_directory, Path.new('/home/user/.config/myapp'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.state_directory returns the Apple Application Support entry subdirectory for (Apple, PreferNative)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferNative,
+      )
+
+      t.equal(
+        app.state_directory,
+        Path.new('/home/user/Library/Application Support/MyApp'),
+      )
+    },
+  )
+
+  t.test(
+    'EntryLocator.state_directory returns the XDG state entry subdirectory for (Apple, PreferXdg)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(app.state_directory, Path.new('/home/user/.local/state/myapp'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.state_directory returns the XDG state entry subdirectory for (Xdg, PreferNative)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferNative,
+      )
+
+      t.equal(app.state_directory, Path.new('/home/user/.local/state/myapp'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.state_directory returns the XDG state entry subdirectory for (Xdg, PreferXdg)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(app.state_directory, Path.new('/home/user/.local/state/myapp'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.cache_directory returns the Apple Caches entry subdirectory for (Apple, PreferNative)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferNative,
+      )
+
+      t.equal(app.cache_directory, Path.new('/home/user/Library/Caches/MyApp'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.cache_directory returns the XDG cache entry subdirectory for (Apple, PreferXdg)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Apple,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(app.cache_directory, Path.new('/home/user/.cache/myapp'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.cache_directory returns the XDG cache entry subdirectory for (Xdg, PreferNative)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferNative,
+      )
+
+      t.equal(app.cache_directory, Path.new('/home/user/.cache/myapp'))
+    },
+  )
+
+  t.test(
+    'EntryLocator.cache_directory returns the XDG cache entry subdirectory for (Xdg, PreferXdg)',
+    fn (t) {
+      let app = entry(
+        [('HOME', '/home/user')],
+        Platform.Xdg,
+        Strategy.PreferXdg,
+      )
+
+      t.equal(app.cache_directory, Path.new('/home/user/.cache/myapp'))
+    },
+  )
+}
