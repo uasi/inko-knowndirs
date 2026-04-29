@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 
-import knowndirs._test_helpers (env)
+import knowndirs._test_helpers (map_from_entries)
 import knowndirs.multi (EntryLocator, EntrySpec, Locator, Platform, Strategy)
 import std.env (self as process_env)
 import std.fs.path (Path)
@@ -11,7 +11,7 @@ fn locator(
   platform: Platform,
   strategy: Strategy,
 ) -> Locator {
-  let mut l = Locator.with_env(env(pairs)).get
+  let l = Locator.with_env(map_from_entries(pairs)).get
 
   l.platform = platform
   l.strategy = strategy
@@ -38,8 +38,8 @@ fn pub tests(t: mut Tests) {
   t.test(
     'Locator.with_env returns None when HOME is either unset or empty',
     fn (t) {
-      t.true(Locator.with_env(env([])).none?)
-      t.true(Locator.with_env(env([('HOME', '')])).none?)
+      t.true(Locator.with_env(map_from_entries([])).none?)
+      t.true(Locator.with_env(map_from_entries([('HOME', '')])).none?)
     },
   )
 
